@@ -22,7 +22,6 @@ import com.google.common.base.Splitter;
 import com.google.common.net.HostAndPort;
 import com.orbitz.consul.Consul;
 import com.orbitz.consul.KeyValueClient;
-import com.orbitz.consul.cache.ConsulCache;
 import com.orbitz.consul.cache.KVCache;
 import com.orbitz.consul.model.kv.Value;
 import com.orbitz.consul.option.DeleteOptions;
@@ -42,16 +41,13 @@ import org.apache.shardingsphere.orchestration.center.instance.option.CustomDele
 import org.apache.shardingsphere.orchestration.center.listener.DataChangedEvent;
 import org.apache.shardingsphere.orchestration.center.listener.DataChangedEventListener;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import static org.apache.shardingsphere.orchestration.center.instance.ConsulPropertyKey.NAMESPACE;
 import static org.apache.shardingsphere.orchestration.center.instance.ConsulPropertyKey.TOKEN;
 
 @Slf4j
@@ -77,17 +73,24 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
 
     private ConcurrentMap<String, KVCache> kvCaches;
 
+    private String namespace;
+
     @Override
     public void init(CenterConfiguration config) {
         this.consulProperties = new ConsulProperties(props);
+        this.namespace = config.getNamespace();
         List<String> serviceList = Splitter.on(",").trimResults().splitToList(config.getServerLists());
         if (CollectionUtils.isEmpty(serviceList)) {
             throw new OrchestrationException("No configuration of service list of consul");
         }
         List<HostAndPort> hostAndPorts = serviceList.stream().map(HostAndPort::fromString).collect(Collectors.toList());
-        this.client = Consul.builder()
-                .withMultipleHostAndPort(hostAndPorts, consulProperties.getValue(ConsulPropertyKey.BLACKLIST_TIME_IN_MILLIS))
-                .build();
+        if (hostAndPorts.size() < 2) {
+            this.client = Consul.builder().withHostAndPort(hostAndPorts.get(0)).build();
+        } else {
+            this.client = Consul.builder()
+                    .withMultipleHostAndPort(hostAndPorts, consulProperties.getValue(ConsulPropertyKey.BLACKLIST_TIME_IN_MILLIS))
+                    .build();
+        }
         this.kvClient = client.keyValueClient();
         this.queryOptions = getQueryOptions();
         this.putOptions = getPutOptions();
@@ -98,7 +101,6 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
 
     @Override
     public String get(String key) {
-        String namespace = consulProperties.getValue(NAMESPACE);
         if (StringUtils.isNotBlank(key)) {
             key = namespace + "/" + key;
         }
@@ -109,6 +111,9 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
 
     @Override
     public void persist(String key, String value) {
+        if (StringUtils.isNotBlank(namespace)) {
+            key = namespace + "/" + key;
+        }
         kvClient.putValue(key, value, 0L, putOptions, Charsets.UTF_8);
     }
 
@@ -121,13 +126,15 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
 
     @Override
     public List<String> getChildrenKeys(String key) {
+        if (StringUtils.isNotBlank(namespace)) {
+            key = namespace + "/" + key;
+        }
         return kvClient.getKeys(key, queryOptions);
     }
 
     @Override
     public void watch(String key, DataChangedEventListener dataChangedEventListener) {
         String originKey = key;
-        String namespace = consulProperties.getValue(NAMESPACE);
         if (StringUtils.isNotBlank(namespace)) {
             key = namespace + "/" + key;
         }
@@ -148,7 +155,6 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
                 } else if (modifyIndexes.containsKey(path)){
                     modifyIndexes.remove(path);
                     dataChangedEventListener.onChange(new DataChangedEvent(originKey, null, DataChangedEvent.ChangedType.DELETED));
-
                 }
             });
             kvCache.start();
@@ -193,8 +199,7 @@ public class ConsulCenterRepository implements ConfigCenterRepository {
     }
 
     private String getPath(String key) {
-        String namespace = consulProperties.getValue(NAMESPACE);
-        if (StringUtils.isNotBlank(key)) {
+        if (StringUtils.isNotBlank(namespace)) {
             return namespace + "/" + key;
         }
         return key;

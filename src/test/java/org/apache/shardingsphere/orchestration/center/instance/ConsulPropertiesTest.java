@@ -22,7 +22,6 @@ import org.junit.Test;
 
 import java.util.Properties;
 
-import static org.apache.shardingsphere.orchestration.center.instance.ConsulPropertyKey.NAMESPACE;
 import static org.apache.shardingsphere.orchestration.center.instance.ConsulPropertyKey.TOKEN;
 
 public class ConsulPropertiesTest {
@@ -31,11 +30,9 @@ public class ConsulPropertiesTest {
         Properties props = new Properties();
         props.setProperty(ConsulPropertyKey.BLACKLIST_TIME_IN_MILLIS.getKey(), "4000L");
         props.setProperty(TOKEN.getKey(), "abcdefgh-12345678-abcdefgh-12345678");
-        props.setProperty(ConsulPropertyKey.NAMESPACE.getKey(), "shardingsphere");
         ConsulProperties actual = new ConsulProperties(props);
         Assert.assertEquals(actual.getValue(ConsulPropertyKey.BLACKLIST_TIME_IN_MILLIS), Long.valueOf(4000L));
         Assert.assertEquals(actual.getValue(TOKEN), "abcdefgh-12345678-abcdefgh-12345678");
-        Assert.assertEquals(actual.getValue(NAMESPACE), "shardingsphere");
     }
 
     @Test
@@ -44,6 +41,5 @@ public class ConsulPropertiesTest {
         ConsulProperties actual = new ConsulProperties(props);
         Assert.assertEquals(actual.getValue(ConsulPropertyKey.BLACKLIST_TIME_IN_MILLIS), Long.valueOf(3000L));
         Assert.assertEquals(actual.getValue(TOKEN), "");
-        Assert.assertEquals(actual.getValue(NAMESPACE), "");
     }
 }

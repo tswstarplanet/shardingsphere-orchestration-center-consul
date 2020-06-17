@@ -26,9 +26,7 @@ import org.apache.shardingsphere.infra.properties.TypedPropertyKey;
 public enum ConsulPropertyKey implements TypedPropertyKey {
     BLACKLIST_TIME_IN_MILLIS("blacklistTimeInMillis", String.valueOf(3000), Long.class),
 
-    TOKEN("token", "", String.class),
-
-    NAMESPACE("namespace", "", String.class);
+    TOKEN("token", "", String.class);
 
     private final String key;
 

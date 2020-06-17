@@ -42,7 +42,7 @@ public class CustomDeleteOptions extends DeleteOptions {
 
     @Override
     public Optional<Boolean> getRecurse() {
-        return Optional.empty();
+        return Optional.of(Boolean.TRUE);
     }
 
     @Override
